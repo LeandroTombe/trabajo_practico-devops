@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  DOCKER_USERNAME: leandrotombe
+  DOCKER_USERNAME: aloric
   IMAGE_NAME_API: leandrotombe/tp-redis-devops-api
   IMAGE_NAME_WEB: leandrotombe/tp-redis-devops-web
 
