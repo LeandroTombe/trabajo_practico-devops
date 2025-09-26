@@ -4,6 +4,7 @@ services:
     name: tp-redis-api
     runtime: docker
     dockerfilePath: ./api/Dockerfile
+    dockerContext: ./api
     plan: free
     envVars:
       - key: REDIS_URL
@@ -23,6 +24,7 @@ services:
     name: tp-redis-web
     runtime: docker
     dockerfilePath: ./web/Dockerfile
+    dockerContext: ./web
     plan: free
 
   # Cache Redis  
