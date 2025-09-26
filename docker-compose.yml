@@ -57,10 +57,10 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+      args:
+        # Para desarrollo local, apunta al contenedor API
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api}
     container_name: ${PROJECT_NAME:-tp-redis-devops}_web
-    environment:
-      # Para desarrollo local, apunta al contenedor API
-      - API_URL=${API_URL:-http://api:8000}
     depends_on:
       - api
     ports:

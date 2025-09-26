@@ -21,14 +21,17 @@ type DataItem = {
   client_time?: number;
 };
 
+// Configuración de API
+const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
+
 const api = {
   async list(): Promise<Todo[]> {
-    const res = await fetch("/api/todos");
+    const res = await fetch(`${API_BASE_URL}/todos`);
     if (!res.ok) throw new Error("Error listando tareas");
     return res.json();
   },
   async add(title: string): Promise<Todo> {
-    const res = await fetch("/api/todos", {
+    const res = await fetch(`${API_BASE_URL}/todos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
@@ -37,7 +40,7 @@ const api = {
     return res.json();
   },
   async toggle(id: number, done: boolean): Promise<Todo> {
-    const res = await fetch(`/api/todos/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/todos/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ done }),
@@ -46,14 +49,14 @@ const api = {
     return res.json();
   },
   async remove(id: number): Promise<void> {
-    const res = await fetch(`/api/todos/${id}`, { method: "DELETE" });
+    const res = await fetch(`${API_BASE_URL}/todos/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Error eliminando tarea");
   },
   
   // Nuevas funciones para datos
   async getData(): Promise<DataItem> {
     const start = performance.now();
-    const res = await fetch("/api/data");
+    const res = await fetch(`${API_BASE_URL}/data`);
     if (!res.ok) throw new Error("Error obteniendo datos");
     const data = await res.json();
     const clientTime = Math.round(performance.now() - start);
@@ -61,7 +64,7 @@ const api = {
   },
   
   async clearCache(): Promise<void> {
-    const res = await fetch("/api/data", { method: "DELETE" });
+    const res = await fetch(`${API_BASE_URL}/data`, { method: "DELETE" });
     if (!res.ok) throw new Error("Error limpiando caché");
   }
 };
