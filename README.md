@@ -1,37 +1,31 @@
-# 📝 Todo App con Redis - Trabajo Práctico DevOps
+# 📝 Todo App con Arquitectura Moderna - Trabajo Práctico DevOps
 
-Una aplicación web completa de gestión de tareas (Todo List) construida con **Django REST Framework**, **React TypeScript** y **Redis**, desplegada usando **Docker Compose**. Este proyecto demuestra prácticas modernas de DevOps y desarrollo full-stack.
+Una aplicación web completa de gestión de tareas (Todo List) con **arquitectura profesional** que combina **PostgreSQL** como base de datos principal y **Redis** como sistema de caché. Construida con **Django REST Framework**, **React TypeScript** y desplegada usando **Docker Compose**. Este proyecto demuestra las mejores prácticas de DevOps y desarrollo full-stack.
 
-## 🏗️ Arquitectura del Sistema
+## 🏗️ Arquitectura del Sistema (Actualizada)
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│                 │    │                 │    │                 │
-│   Frontend      │    │   Backend       │    │   Database      │
-│   (React TS)    │◄──►│   (Django API)  │◄──►│   (Redis)       │
-│   Puerto: 8080  │    │   Puerto: 8000  │    │   Puerto: 6379  │
-│                 │    │                 │    │                 │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Django API    │    │     Redis       │    │   PostgreSQL    │
+│   (React TS)    │◄──►│   (Cache Layer) │◄──►│    (Cache)      │    │  (Database)     │
+│   Puerto: 8081  │    │   Puerto: 8000  │    │   Puerto: 6379  │    │   Puerto: 5432  │
+│   Nginx Server  │    │   REST + ORM    │    │   Session Store │    │   Persistence   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-### Componentes:
+### 🔧 Componentes Principales:
 
-- **Frontend**: Aplicación React con TypeScript servida por Nginx
-- **Backend**: API REST desarrollada con Django REST Framework
-- **Base de Datos**: Redis para almacenamiento rápido de datos
-- **Orquestación**: Docker Compose para gestión de contenedores
+- **🌐 Frontend**: React con TypeScript y Vite, servido por Nginx optimizado
+- **⚡ Backend**: Django REST Framework con ORM y sistema de caché inteligente
+- **💾 Base de Datos**: PostgreSQL 15 para persistencia confiable y transacciones ACID
+- **🚀 Cache**: Redis 7 para optimización de performance y gestión de sesiones
+- **🐳 Orquestación**: Docker Compose con volúmenes persistentes y networking
 
-## ✨ Características
+### 🎯 Flujo de Datos:
 
-- ✅ **CRUD completo** de tareas (Crear, Leer, Actualizar, Eliminar)
-- ✅ **Interfaz moderna** y responsive con React + TypeScript
-- ✅ **API REST** documentada y escalable
-- ✅ **Base de datos en memoria** Redis para alta performance
-- ✅ **Arquitectura containerizada** con Docker
-- ✅ **Configuración de desarrollo** lista para usar
-- ✅ **Manejo de estados** y errores en el frontend
-
-## 🚀 Inicio Rápido
+1. **Escritura**: Django → PostgreSQL → Invalidar Cache Redis
+2. **Lectura**: Django → Redis (si existe) → PostgreSQL (si cache miss) → Cache en Redis
+3. **Sesiones**: Django → Redis (almacenamiento de sesiones)
 
 ### Prerrequisitos
 
@@ -47,36 +41,58 @@ Asegúrate de tener instalado:
    cd tp-redis-devops
    ```
 
-2. **Inicia todos los servicios**
+2. **Configura el entorno**
    ```bash
-   docker-compose up --build
-   ```
+   # El proyecto usa un solo archivo .env que puedes editar para cambiar entre:
+   # - DESARROLLO: Build local de imágenes Docker
+   # - PRODUCCIÓN: Uso de imágenes publicadas en Docker Hub
    
-   Este comando:
-   - Construye las imágenes Docker
-   - Inicia Redis, la API de Django y el frontend de React
-   - Configura la red entre contenedores
+   # Configuraciones incluidas:
+   # - Base de datos PostgreSQL con persistencia
+   # - Cache Redis con configuración optimizada
+   # - Variables de conexión y puertos
+   
+   # Ver instrucciones rápidas: SWITCH-MODE.md
+   ```
 
-3. **Accede a la aplicación**
-   - **Frontend**: http://localhost:8080
-   - **API Backend**: http://localhost:8000
-   - **Redis**: localhost:6379
+3. **Inicia el proyecto**
+   ```bash
+   # Usando el script de gestión (recomendado)
+   ./scripts/manage.sh start
+   
+   # O directamente con Docker Compose
+   docker-compose up -d
+   ```
 
-### Modo Desarrollo (Detached)
+4. **Accede a la aplicación**
+   - **Frontend**: http://localhost:8081 (desarrollo) / http://localhost:80 (producción)
+   - **API**: http://localhost:8000
+   - **Base de datos**: PostgreSQL puerto 5432
+   - **Cache**: Redis puerto 6379
+   - **Health Check**: http://localhost:8000/api/health/ (verificar conexiones)
 
-Para ejecutar en segundo plano:
+## 🛠️ Comandos Simplificados
+
+### Script de Gestión (Recomendado)
 ```bash
-docker-compose up -d --build
+./scripts/manage.sh start    # Iniciar con configuración actual
+./scripts/manage.sh stop     # Detener servicios
+./scripts/manage.sh logs     # Ver logs
+./scripts/manage.sh build    # Construir imágenes locales
+./scripts/manage.sh clean    # Limpiar contenedores
+./scripts/manage.sh switch   # Ver instrucciones de cambio de modo
 ```
 
-Para ver los logs:
+### Docker Compose Directo
 ```bash
+# Ver logs
 docker-compose logs -f
-```
 
-Para detener los servicios:
-```bash
+# Detener servicios
 docker-compose down
+
+# Reconstruir e iniciar
+docker-compose up --build -d
 ```
 
 ## 📁 Estructura del Proyecto
@@ -84,156 +100,352 @@ docker-compose down
 ```
 tp-redis-devops/
 ├── 📄 docker-compose.yml          # Orquestación de servicios
-├── 📄 README.md                   # Este archivo
-├── 📁 api/                        # Backend Django
-│   ├── 📄 Dockerfile              # Imagen del backend
-│   ├── 📄 requirements.txt        # Dependencias Python
-│   ├── 📄 manage.py               # CLI de Django
-│   ├── 📁 api_project/            # Configuración principal
-│   └── 📁 todos/                  # App de tareas
-│       └── 📄 views.py            # Lógica de la API
-└── 📁 web/                        # Frontend React
-    ├── 📄 Dockerfile              # Imagen del frontend
-    ├── 📄 package.json            # Dependencias Node.js
-    ├── 📄 tsconfig.json           # Configuración TypeScript
-    ├── 📄 index.html              # Archivo HTML base
-    ├── 📁 nginx/                  # Configuración del servidor web
-    └── 📁 src/                    # Código fuente React
-        ├── 📄 main.tsx            # Punto de entrada
-        └── 📄 App.tsx             # Componente principal
+├── 📄 .env                        # Variables de entorno unificadas (dev/prod)
+├── 📄 SWITCH-MODE.md             # Guía rápida para cambiar entre modos
+├── 📄 README-ENVIRONMENT.md       # Guía de variables de entorno
+├── 📄 README-CI-CD.md            # Guía de CI/CD
+├── 📄 .gitignore                 # Archivos ignorados por Git
+├── 📁 api/                       # Backend Django
+│   ├── 📄 Dockerfile             # Imagen del API
+│   ├── 📄 requirements.txt       # Dependencias Python
+│   ├── 📄 manage.py              # Script de gestión Django
+│   ├── 📁 api_project/           # Configuración principal
+│   └── 📁 todos/                 # Aplicación de tareas
+├── 📁 web/                       # Frontend React
+│   ├── 📄 Dockerfile             # Imagen del frontend
+│   ├── 📄 package.json           # Dependencias Node.js
+│   ├── 📄 tsconfig.json          # Configuración TypeScript
+│   ├── 📁 src/                   # Código fuente React
+│   └── 📁 nginx/                 # Configuración Nginx
+├── 📁 scripts/                   # Scripts de automatización
+│   └── 📄 manage.sh              # Script principal de gestión
+└── 📁 .github/workflows/         # CI/CD con GitHub Actions
+    └── 📄 ci-cd.yml              # Pipeline automatizado
 ```
 
-## 🔧 Configuración Técnica
+## 🐳 Servicios Docker
 
-### Variables de Entorno
+### Base de Datos PostgreSQL
+- **Puerto**: 5432
+- **Versión**: PostgreSQL 15-alpine
+- **Uso**: Almacenamiento principal de datos con persistencia
+- **Volumen**: `postgres_data` para persistencia entre reinicios
+- **Configuración**: Usuario y base de datos configurables via .env
 
-El proyecto utiliza las siguientes variables de entorno (configuradas en `docker-compose.yml`):
+### Cache Redis
+- **Puerto**: 6379
+- **Versión**: Redis 7-alpine
+- **Uso**: Cache inteligente de API responses y sesiones
+- **TTL**: 900 segundos (15 minutos) para cache de endpoints
+- **Configuración**: Optimizado para cache con invalidación automática
 
-| Variable | Valor por Defecto | Descripción |
-|----------|-------------------|-------------|
-| `REDIS_HOST` | `redis` | Host del servidor Redis |
-| `REDIS_PORT` | `6379` | Puerto de Redis |
-| `REDIS_DB` | `0` | Base de datos Redis |
-| `DJANGO_SECRET_KEY` | `dev-secret-key-change-me` | Clave secreta de Django |
-| `DJANGO_DEBUG` | `1` | Modo debug de Django |
+### API Backend (Django)
+- **Puerto**: 8000
+- **Framework**: Django REST Framework con ORM
+- **Base de datos**: PostgreSQL (principal) + Redis (cache)
+- **Imagen**: `mirandaariano/tp-redis-devops-api:latest`
+- **Características**: 
+  - Cache inteligente con invalidación automática
+  - Health check endpoint para monitoreo
+  - Migraciones automáticas de base de datos
 
-### Puertos Utilizados
+### Frontend (React)
+- **Puerto**: 8081 (desarrollo) / 80 (producción)
+- **Framework**: React con TypeScript
+- **Build**: Vite
+- **Servidor**: Nginx
+- **Imagen**: `mirandaariano/tp-redis-devops-web:latest`
 
-| Servicio | Puerto Host | Puerto Contenedor | Descripción |
-|----------|-------------|-------------------|-------------|
-| Frontend | 8080 | 80 | Aplicación web React |
-| Backend API | 8000 | 8000 | API REST Django |
-| Redis | 6379 | 6379 | Base de datos Redis |
+## 🔄 CI/CD Pipeline
 
-## 🛠️ Desarrollo Local
+El proyecto incluye un pipeline automatizado de CI/CD con GitHub Actions:
 
-### Ejecutar el Backend solamente
+- **Triggers**: Push a `main` y Pull Requests
+- **Build**: Construcción automática de imágenes Docker
+- **Tests**: Validación de código y dependencias
+- **Deploy**: Publicación automática a Docker Hub
 
-```bash
-cd api
-pip install -r requirements.txt
-python manage.py runserver 0.0.0.0:8000
+📖 **Ver guía completa**: [README-CI-CD.md](README-CI-CD.md)
+
+## 🧪 API Endpoints
+
+La API REST ofrece los siguientes endpoints con cache inteligente:
+
+### Tareas (Todos)
+```http
+GET    /api/todos/          # Listar todas las tareas (con cache Redis)
+POST   /api/todos/          # Crear nueva tarea (invalida cache)
+GET    /api/todos/{id}/     # Obtener tarea específica (con cache)
+PUT    /api/todos/{id}/     # Actualizar tarea (invalida cache)
+DELETE /api/todos/{id}/     # Eliminar tarea (invalida cache)
 ```
 
-### Ejecutar el Frontend solamente
-
-```bash
-cd web
-npm install
-npm run build
-# Servir con cualquier servidor web estático
+### Sistema y Monitoreo
+```http
+GET    /api/health/         # Health check de PostgreSQL y Redis
 ```
 
-### Ejecutar Redis solamente
-
-```bash
-docker run --name redis -p 6379:6379 -d redis:7-alpine
-```
-
-## 📚 API Endpoints
-
-La API REST proporciona los siguientes endpoints:
-
-| Método | Endpoint | Descripción | Ejemplo de Payload |
-|--------|----------|-------------|-------------------|
-| `GET` | `/api/todos` | Lista todas las tareas | - |
-| `POST` | `/api/todos` | Crea una nueva tarea | `{"title": "Nueva tarea"}` |
-| `PATCH` | `/api/todos/:id` | Actualiza una tarea | `{"done": true}` |
-| `DELETE` | `/api/todos/:id` | Elimina una tarea | - |
-
-### Ejemplo de Respuesta
-
+### Ejemplo de respuesta:
 ```json
 {
   "id": 1,
-  "title": "Aprender Docker",
-  "done": false,
-  "created_at": 1694198400
+  "title": "Completar documentación",
+  "description": "Escribir README completo",
+  "completed": false,
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:30:00Z"
 }
 ```
 
-## 🧪 Testing
+### Ejemplo Health Check:
+```json
+{
+  "status": "healthy",
+  "database": "connected",
+  "cache": "connected",
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
 
-### Probar la API con curl
+## 🛠️ Desarrollo
 
+### Estructura del Frontend (React)
+- `src/App.tsx`: Componente principal con gestión de estado
+- `src/main.tsx`: Punto de entrada
+- Configuración con Vite para hot reload
+
+### Estructura del Backend (Django)
+- `api_project/`: Configuración principal del proyecto
+  - `settings.py`: Configuración de PostgreSQL y Redis cache
+  - `urls.py`: Routing principal de la API
+- `todos/`: Aplicación de gestión de tareas
+  - `models.py`: Modelo Django para PostgreSQL
+  - `views.py`: API views con cache inteligente
+- `requirements.txt`: Dependencias Python incluyendo psycopg2 y django-redis
+
+### Arquitectura de Cache
+El sistema implementa un cache inteligente de dos niveles:
+
+1. **PostgreSQL (Persistencia)**: Almacena todos los datos de forma permanente
+2. **Redis (Cache)**: Cache temporal de 15 minutos para mejorar performance
+
+**Invalidación automática**: Cualquier operación de escritura (POST/PUT/DELETE) invalida el cache automáticamente.
+
+### Variables de Entorno
+
+El proyecto utiliza un sistema completo de variables de entorno con configuración de base de datos y cache:
+
+**Base de Datos (PostgreSQL)**:
+- `DATABASE_NAME`: Nombre de la base de datos
+- `DATABASE_USER`: Usuario de PostgreSQL
+- `DATABASE_PASSWORD`: Contraseña de PostgreSQL
+- `DATABASE_HOST`: Host de la base de datos
+- `DATABASE_PORT`: Puerto de PostgreSQL (5432)
+
+**Cache (Redis)**:
+- `REDIS_HOST`: Host de Redis
+- `REDIS_PORT`: Puerto de Redis (6379)
+- `REDIS_PASSWORD`: Contraseña de Redis (opcional)
+
+**Configuración de Servicios**:
+- `API_PORT`: Puerto del API (8000)
+- `WEB_PORT`: Puerto del frontend (8081/80)
+- `MODE`: Modo de ejecución (development/production)
+
+📖 **Ver configuración completa**: [README-ENVIRONMENT.md](README-ENVIRONMENT.md)
+
+## 🚀 Despliegue
+
+### Desarrollo Local
 ```bash
-# Listar tareas
-curl http://localhost:8000/api/todos
+# Con imágenes locales y base de datos completa
+docker-compose up -d
 
-# Crear tarea
-curl -X POST http://localhost:8000/api/todos \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Tarea de prueba"}'
+# Verificar que todos los servicios estén funcionando
+docker-compose ps
+curl http://localhost:8000/api/health/
+```
 
-# Marcar como completada
-curl -X PATCH http://localhost:8000/api/todos/1 \
-  -H "Content-Type: application/json" \
-  -d '{"done":true}'
+### Producción (Docker Hub)
+```bash
+# Con imágenes publicadas
+docker-compose --env-file .env.prod up -d
 
-# Eliminar tarea
-curl -X DELETE http://localhost:8000/api/todos/1
+# Verificar despliegue
+curl http://localhost:8000/api/health/
+```
+
+### Monitoreo
+```bash
+# Ver estado de servicios
+docker-compose ps
+
+# Ver logs en tiempo real
+docker-compose logs -f
+
+# Ver logs específicos de un servicio
+docker-compose logs -f api        # Backend Django
+docker-compose logs -f database   # PostgreSQL
+docker-compose logs -f cache      # Redis
+
+# Health check de la aplicación
+curl http://localhost:8000/api/health/
+
+# Verificar conexión a PostgreSQL
+docker exec -it tp-redis-devops-database-1 psql -U admin -d todos_db -c "\dt"
+
+# Verificar cache Redis
+docker exec -it tp-redis-devops-cache-1 redis-cli KEYS "*"
+
+# Ver salud de contenedores
+docker inspect --format='{{json .State.Health}}' <container_name>
 ```
 
 ## 🐛 Troubleshooting
 
 ### Problemas Comunes
 
-1. **Puerto ya en uso**
+1. **Puerto en uso**
    ```bash
-   # Cambiar puertos en docker-compose.yml
-   # O detener servicios que usen los puertos 8000, 8080, 6379
+   # Cambiar puertos en .env
+   API_PORT=8001
+   WEB_PORT=8082
+   DATABASE_PORT=5433
+   REDIS_PORT=6380
    ```
 
-2. **Contenedores no se comunican**
+2. **Error de conexión PostgreSQL**
    ```bash
-   # Verificar que todos los servicios estén corriendo
-   docker-compose ps
+   # Verificar estado del contenedor
+   docker-compose ps database
+   docker-compose logs database
    
-   # Revisar logs
-   docker-compose logs api
-   docker-compose logs web
-   docker-compose logs redis
+   # Verificar conexión desde el API
+   curl http://localhost:8000/api/health/
    ```
 
-3. **Datos de Redis se pierden**
+3. **Error de cache Redis**
    ```bash
-   # Redis usa almacenamiento en memoria por defecto
-   # Para persistencia, añadir volúmenes en docker-compose.yml
+   # Verificar estado del contenedor
+   docker-compose ps cache
+   docker-compose logs cache
+   
+   # Limpiar cache manualmente
+   docker exec -it tp-redis-devops-cache-1 redis-cli FLUSHALL
    ```
 
-### Comandos Útiles
+4. **Problemas de migración de base de datos**
+   ```bash
+   # Ejecutar migraciones manualmente
+   docker exec -it tp-redis-devops-api-1 python manage.py migrate
+   
+   # Ver estado de migraciones
+   docker exec -it tp-redis-devops-api-1 python manage.py showmigrations
+   ```
+
+5. **Reconstruir desde cero**
+   ```bash
+   ./scripts/manage.sh clean
+   docker-compose down -v  # Elimina también los volúmenes
+   docker-compose up --build -d
+   ```
+
+6. **Verificar volúmenes de datos**
+   ```bash
+   # Listar volúmenes
+   docker volume ls | grep tp-redis-devops
+   
+   # Inspeccionar volumen de PostgreSQL
+   docker volume inspect tp-redis-devops_postgres_data
+   ```
+
+## 📚 Recursos Adicionales
+
+- [Django REST Framework](https://www.django-rest-framework.org/)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [Redis Documentation](https://redis.io/documentation)
+- [Django-Redis Cache](https://github.com/jazzband/django-redis)
+- [React TypeScript](https://react-typescript-cheatsheet.netlify.app/)
+- [Docker Compose](https://docs.docker.com/compose/)
+
+
+**Ventajas del sistema**:
+- Datos persistentes con PostgreSQL
+- Cache inteligente con invalidación automática
+- Health checks para monitoreo
+- Volúmenes Docker para persistencia
+- Configuración unificada con .env
+- Pipeline CI/CD automatizado
+
+## 👥 Contribuciones
+
+Las contribuciones son bienvenidas. Por favor:
+
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+## 🔬 Ejemplos Prácticos de Uso
+
+### Verificar que todo funciona correctamente
 
 ```bash
-# Reconstruir imágenes
-docker-compose build --no-cache
+# 1. Iniciar todos los servicios
+docker-compose up -d
 
-# Acceder al contenedor de la API
-docker-compose exec api bash
+# 2. Verificar que todos los contenedores están corriendo
+docker-compose ps
 
-# Ver logs en tiempo real
-docker-compose logs -f api
+# 3. Verificar salud del sistema
+curl http://localhost:8000/api/health/
 
-# Limpiar volúmenes y contenedores
-docker-compose down -v
-docker system prune -a
+# 4. Crear una tarea de prueba
+curl -X POST http://localhost:8000/api/todos/ \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Tarea de prueba", "description": "Verificar que la API funciona"}'
+
+# 5. Listar todas las tareas (debería venir del cache después de la primera consulta)
+curl http://localhost:8000/api/todos/
 ```
+
+### Comandos útiles para desarrollo
+
+```bash
+# Ver logs de todos los servicios en tiempo real
+docker-compose logs -f
+
+# Acceder a la base de datos PostgreSQL
+docker exec -it tp-redis-devops-database-1 psql -U admin -d todos_db
+
+# Acceder al CLI de Redis
+docker exec -it tp-redis-devops-cache-1 redis-cli
+
+# Ejecutar comandos Django (migraciones, shell, etc.)
+docker exec -it tp-redis-devops-api-1 python manage.py shell
+
+# Verificar migraciones
+docker exec -it tp-redis-devops-api-1 python manage.py showmigrations
+
+# Crear superusuario de Django
+docker exec -it tp-redis-devops-api-1 python manage.py createsuperuser
+```
+
+### Performance y Cache
+
+```bash
+# Ver qué está en el cache de Redis
+docker exec -it tp-redis-devops-cache-1 redis-cli KEYS "*"
+
+# Limpiar todo el cache
+docker exec -it tp-redis-devops-cache-1 redis-cli FLUSHALL
+
+# Ver información del cache Redis
+docker exec -it tp-redis-devops-cache-1 redis-cli INFO memory
+
+# Ver estadísticas de PostgreSQL
+docker exec -it tp-redis-devops-database-1 psql -U admin -d todos_db -c "SELECT * FROM pg_stat_activity;"
+```
+
+**¿Preguntas?** Abre un [issue](https://github.com/MirandaAriano/tp-redis-devops/issues) o revisa la documentación adicional en los archivos README específicos.
