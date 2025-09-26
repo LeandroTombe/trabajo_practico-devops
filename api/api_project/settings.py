@@ -12,6 +12,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "tp-redis-api.onrender.com",
     "tp-redis-web.onrender.com",
+    ".onrender.com",  # Permite todos los subdominios de Render
 ]
 
 # En producción, agregar hosts desde variable de entorno
