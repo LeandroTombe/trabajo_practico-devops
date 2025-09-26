@@ -18,6 +18,16 @@ Una aplicación web completa de gestión de tareas (Todo List) con **arquitectur
 - **🌐 Frontend**: React con TypeScript y Vite, servido por Nginx optimizado
 - **⚡ Backend**: Django REST Framework con ORM y sistema de caché inteligente
 - **💾 Base de Datos**: PostgreSQL 15 para persistencia confiable y transacciones ACID
+
+### 🌍 Configuración Dual (Desarrollo vs Producción):
+
+#### **Desarrollo Local** (Docker Compose):
+- **Frontend**: Nginx proxy → `http://api:8000` (contenedor local)
+- **Variables**: `API_URL=http://api:8000`
+
+#### **Producción** (Render):
+- **Frontend**: Nginx proxy → `https://tp-redis-api.onrender.com`
+- **Variables**: `API_URL=https://tp-redis-api.onrender.com`
 - **🚀 Cache**: Redis 7 para optimización de performance y gestión de sesiones
 - **🐳 Orquestación**: Docker Compose con volúmenes persistentes y networking
 
@@ -100,10 +110,8 @@ docker-compose up --build -d
 ```
 tp-redis-devops/
 ├── 📄 docker-compose.yml          # Orquestación de servicios
-├── 📄 .env                        # Variables de entorno unificadas (dev/prod)
-├── 📄 SWITCH-MODE.md             # Guía rápida para cambiar entre modos
-├── 📄 README-ENVIRONMENT.md       # Guía de variables de entorno
-├── 📄 README-CI-CD.md            # Guía de CI/CD
+├── 📄 .env.example               # Plantilla de variables de entorno
+├── 📄 render.yaml                # Configuración para despliegue en Render
 ├── 📄 .gitignore                 # Archivos ignorados por Git
 ├── 📁 api/                       # Backend Django
 │   ├── 📄 Dockerfile             # Imagen del API
@@ -116,7 +124,7 @@ tp-redis-devops/
 │   ├── 📄 package.json           # Dependencias Node.js
 │   ├── 📄 tsconfig.json          # Configuración TypeScript
 │   ├── 📁 src/                   # Código fuente React
-│   └── 📁 nginx/                 # Configuración Nginx
+│   └── 📁 nginx/                 # Configuración Nginx con templates
 ├── 📁 scripts/                   # Scripts de automatización
 │   └── 📄 manage.sh              # Script principal de gestión
 └── 📁 .github/workflows/         # CI/CD con GitHub Actions
@@ -138,6 +146,12 @@ tp-redis-devops/
 - **Uso**: Cache inteligente de API responses y sesiones
 - **TTL**: 900 segundos (15 minutos) para cache de endpoints
 - **Configuración**: Optimizado para cache con invalidación automática
+
+### Frontend Nginx
+- **Puerto**: 8081 (desarrollo), 80 (producción)
+- **Configuración**: Templates dinámicos con variables de entorno
+- **Proxy**: Configuración dual para desarrollo local vs producción
+- **Template**: `default.conf.template` → `default.conf` procesado automáticamente
 
 ### API Backend (Django)
 - **Puerto**: 8000
@@ -233,26 +247,30 @@ El sistema implementa un cache inteligente de dos niveles:
 
 ### Variables de Entorno
 
-El proyecto utiliza un sistema completo de variables de entorno con configuración de base de datos y cache:
+El proyecto utiliza un sistema de configuración dual que se adapta automáticamente al entorno:
 
-**Base de Datos (PostgreSQL)**:
-- `DATABASE_NAME`: Nombre de la base de datos
-- `DATABASE_USER`: Usuario de PostgreSQL
-- `DATABASE_PASSWORD`: Contraseña de PostgreSQL
-- `DATABASE_HOST`: Host de la base de datos
-- `DATABASE_PORT`: Puerto de PostgreSQL (5432)
+**Desarrollo Local** (Docker Compose):
+```bash
+# Configuración para contenedores locales
+DATABASE_URL=postgresql://user:password@postgres:5432/todos
+REDIS_URL=redis://redis:6379/0
+API_URL=http://api:8000  # Apunta al contenedor interno
+```
 
-**Cache (Redis)**:
-- `REDIS_HOST`: Host de Redis
-- `REDIS_PORT`: Puerto de Redis (6379)
-- `REDIS_PASSWORD`: Contraseña de Redis (opcional)
+**Producción** (Render):
+```bash
+# Configuración para servicios externos
+DATABASE_URL=postgresql://usuario:password@host-externo:5432/database
+REDIS_URL=redis://host-redis-externo:6379/0
+API_URL=https://tp-redis-api.onrender.com  # URL pública del API
+```
 
-**Configuración de Servicios**:
-- `API_PORT`: Puerto del API (8000)
-- `WEB_PORT`: Puerto del frontend (8081/80)
-- `MODE`: Modo de ejecución (development/production)
+**Sistema de Templates Nginx**:
+- El archivo `default.conf.template` usa `${API_URL}` como variable
+- Nginx procesa automáticamente el template según el entorno
+- Elimina conflictos entre desarrollo local y producción
 
-📖 **Ver configuración completa**: [README-ENVIRONMENT.md](README-ENVIRONMENT.md)
+📖 **Archivo de referencia**: Ver `.env.example` para configuración completa
 
 ## 🚀 Despliegue
 

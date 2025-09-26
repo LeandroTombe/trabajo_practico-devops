@@ -58,6 +58,9 @@ services:
       context: ./web
       dockerfile: Dockerfile
     container_name: ${PROJECT_NAME:-tp-redis-devops}_web
+    environment:
+      # Para desarrollo local, apunta al contenedor API
+      - API_URL=${API_URL:-http://api:8000}
     depends_on:
       - api
     ports:

@@ -30,6 +30,10 @@ services:
     dockerfilePath: ./web/Dockerfile
     dockerContext: ./web
     plan: free
+    envVars:
+      # Para producción, apunta a la URL del API en Render
+      - key: API_URL
+        value: "https://tp-redis-api.onrender.com"
 
   # Cache Redis  
   - type: redis

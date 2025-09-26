@@ -6,8 +6,16 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# Servir con nginx + proxy /api -> api:8000
+# Servir con nginx + proxy dinámico
 FROM nginx:alpine
-COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+
+# Copiar template de configuración
+COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
+
+# Copiar archivos construidos
 COPY --from=build /app/dist /usr/share/nginx/html
+
+# Variable de entorno por defecto para desarrollo
+ENV API_URL=http://api:8000
+
 EXPOSE 80

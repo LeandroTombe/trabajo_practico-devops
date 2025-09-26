@@ -150,11 +150,8 @@ class DataView(APIView):
                 data['load_time'] = 0  # Instantáneo desde caché
                 return Response(data)
             
-            # Cargar datos reales (sin caché) - simular procesamiento lento
+            # Cargar datos reales (sin caché) - tiempo real de consulta
             start_time = time.time()
-            
-            # Simular una consulta lenta a la base de datos
-            time.sleep(0.8)  # 800ms de "procesamiento"
             
             # Obtener todas las tareas reales desde Redis
             todo_ids = r.zrange("todo:ids", 0, -1, withscores=True)
@@ -182,16 +179,10 @@ class DataView(APIView):
                         'timestamp': timestamp
                     })
             
-            # Debug: imprimir algunas tareas para verificar
-            print(f"DEBUG: Total todos: {len(todos)}")
-            for todo in todos[:2]:  # Solo las primeras 2
-                print(f"DEBUG: Todo {todo['id']}: done={todo['done']}, title={todo['title']}")
-            
             # Crear estadísticas de las tareas
             total_todos = len(todos)
             completed_todos = len([t for t in todos if t['done']])
             pending_todos = total_todos - completed_todos
-            print(f"DEBUG: completed_todos={completed_todos}, pending_todos={pending_todos}")
             
             # Preparar respuesta con datos reales
             todos_data = {
