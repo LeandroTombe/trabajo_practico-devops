@@ -10,9 +10,13 @@ DEBUG = os.environ.get("DEBUG", "True") == "True"
 ALLOWED_HOSTS = [
     "localhost", 
     "127.0.0.1",
-    "*.onrender.com",
-    "*"  # Solo para desarrollo
+    "tp-redis-api.onrender.com",
+    "tp-redis-web.onrender.com",
 ]
+
+# En producción, agregar hosts desde variable de entorno
+if os.environ.get("RENDER"):
+    ALLOWED_HOSTS.append(os.environ.get("RENDER_EXTERNAL_HOSTNAME"))
 
 INSTALLED_APPS = [
     "corsheaders",
@@ -33,12 +37,15 @@ MIDDLEWARE = [
 ROOT_URLCONF = "api_project.urls"
 WSGI_APPLICATION = "api_project.wsgi.application"
 
-# DB no se usa, pero Django lo requiere configurado
+# Base de datos - configuración para Render con PostgreSQL
+import dj_database_url
+
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": dj_database_url.config(
+        default="sqlite:///db.sqlite3",
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
 TIME_ZONE = "UTC"
@@ -47,6 +54,24 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+# Configuración de Redis para Render
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379")
+
+# Cache con Redis
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": REDIS_URL,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+
+# Configuración de sesiones
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [],

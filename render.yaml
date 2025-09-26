@@ -18,6 +18,10 @@ services:
           property: connectionString
       - key: DEBUG
         value: "False"
+      - key: RENDER
+        value: "True"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
 
   # Frontend React
   - type: web
