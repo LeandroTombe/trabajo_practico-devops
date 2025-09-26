@@ -3,10 +3,16 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key")
-DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-change-in-production")
+DEBUG = os.environ.get("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = ["*",]
+# Para producción en Render
+ALLOWED_HOSTS = [
+    "localhost", 
+    "127.0.0.1",
+    "*.onrender.com",
+    "*"  # Solo para desarrollo
+]
 
 INSTALLED_APPS = [
     "corsheaders",
