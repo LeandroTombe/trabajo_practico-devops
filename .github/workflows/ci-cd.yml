@@ -85,13 +85,9 @@ jobs:
 
     - name: Trigger Render Deploy
       run: |
-        if [ -n "${{ secrets.RENDER_DEPLOY_HOOK }}" ]; then
-          echo " Triggering Render deployment..."
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
-          echo " Render deployment triggered!"
-        else
-          echo " Render will auto-deploy from Git push"
-        fi
+        echo "🚀 Render will auto-deploy from this Git push"
+        echo "📦 Docker images are available in Docker Hub"
+        echo "⏳ Deployment should start automatically"
 
     - name: Deployment Complete
       run: |
