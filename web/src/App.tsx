@@ -22,7 +22,17 @@ type DataItem = {
 };
 
 // Configuración de API
-const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || 
+  (window.location.hostname === 'tp-redis-web.onrender.com' 
+    ? 'https://tp-redis-api.onrender.com/api' 
+    : '/api');
+
+// Debug logging
+console.log('🔧 Frontend Config:', {
+  hostname: window.location.hostname,
+  VITE_API_URL: import.meta.env.VITE_API_URL,
+  API_BASE_URL: API_BASE_URL
+});
 
 const api = {
   async list(): Promise<Todo[]> {
