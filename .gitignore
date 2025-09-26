@@ -1,0 +1,79 @@
+# Variables de entorno
+.env
+.env.local
+.env.production
+.env.development
+.env.prod
+.env.staging
+
+# Dependencias y paquetes
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Archivos de build y distribución
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Cache de editores y sistemas
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Archivos temporales de Django
+*.sqlite3
+db.sqlite3
+/static/
+/media/
+*.pot
+
+# Archivos de cobertura de tests
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.pytest_cache/
+
+# Archivos de Docker (si los hay)
+.dockerignore
+
+# Archivos de sistema
+*.pid
+*.seed
+*.pid.lock
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Archivos específicos de Redis
+dump.rdb
+appendonly.aof
+
+# Archivos de Nginx (si se generan)
+*.access.log
+*.error.log

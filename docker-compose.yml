@@ -1,0 +1,69 @@
+﻿
+services:
+  # Base de datos principal (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    container_name: ${PROJECT_NAME:-tp-redis-devops}_db
+    environment:
+      - POSTGRES_DB=${DB_NAME:-tp_redis_db}
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    restart: ${RESTART_POLICY:-unless-stopped}
+
+  # Cache y sesiones (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: ${PROJECT_NAME:-tp-redis-devops}_redis
+    ports:
+      - "${REDIS_EXTERNAL_PORT:-6379}:${REDIS_PORT:-6379}"
+    restart: ${RESTART_POLICY:-unless-stopped}
+
+  api:
+    # Para desarrollo: build local, para producción: imagen de Docker Hub
+    image: ${API_IMAGE:-}
+    build: 
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: ${PROJECT_NAME:-tp-redis-devops}_api
+    environment:
+      # Configuración de base de datos
+      - DB_HOST=db
+      - DB_NAME=${DB_NAME:-tp_redis_db}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres123}
+      - DB_PORT=5432
+      # Configuración de Redis (cache)
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_DB=${REDIS_DB:-0}
+      # Configuración de Django
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-dev-secret-key-change-me}
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-1}
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-api_project.settings}
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "${API_PORT:-8000}:8000"
+    restart: ${RESTART_POLICY:-unless-stopped}
+
+  web:
+    # Para desarrollo: build local, para producción: imagen de Docker Hub
+    image: ${WEB_IMAGE:-}
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: ${PROJECT_NAME:-tp-redis-devops}_web
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8081}:80"
+    restart: ${RESTART_POLICY:-unless-stopped}
+
+# Volúmenes persistentes
+volumes:
+  postgres_data:
