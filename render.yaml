@@ -3,6 +3,7 @@ services:
   - type: redis
     name: tp-redis-cache
     plan: free
+    ipAllowList: []  # Permite acceso desde cualquier IP
     
   # Base de datos PostgreSQL
   - type: pserv
@@ -12,7 +13,7 @@ services:
   # API Django Backend
   - type: web
     name: tp-redis-api
-    env: docker
+    runtime: docker
     dockerfilePath: ./api/Dockerfile
     plan: free
     envVars:
@@ -36,6 +37,10 @@ services:
   # Frontend React
   - type: web
     name: tp-redis-web
-    env: docker
+    runtime: docker
     dockerfilePath: ./web/Dockerfile
+    plan: free
+
+databases:
+  - name: tp-redis-db
     plan: free
