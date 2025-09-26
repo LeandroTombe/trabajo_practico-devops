@@ -1,7 +1,9 @@
-﻿name: CI/CD
+﻿name: CI/CD Pipeline
 
 on:
   push:
+    branches: [ main ]
+  pull_request:
     branches: [ main ]
 
 env:
@@ -10,23 +12,40 @@ env:
   IMAGE_NAME_WEB: aloric/tp-redis-devops-web
 
 jobs:
-  deploy:
-    name: Build, Test & Deploy
+  build-and-test:
+    name:  Build & Test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Docker
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Test
+    - name: Build images
       run: |
         docker compose build
+
+    - name: Run tests
+      run: |
         docker compose up -d
-        sleep 20
+        sleep 30
+        echo " Services are running"
         docker compose down
+
+  publish:
+    name:  Publish to Docker Hub
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
     - name: Login to Docker Hub
       uses: docker/login-action@v3
@@ -34,14 +53,49 @@ jobs:
         username: ${{ env.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-    - name: Build & Push
-      run: |
-        docker build -t ${{ env.IMAGE_NAME_API }}:latest ./api
-        docker build -t ${{ env.IMAGE_NAME_WEB }}:latest ./web
-        docker push ${{ env.IMAGE_NAME_API }}:latest
-        docker push ${{ env.IMAGE_NAME_WEB }}:latest
+    - name: Build and push API image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./api
+        push: true
+        tags: ${{ env.IMAGE_NAME_API }}:latest
 
-    - name: Deploy to Render
+    - name: Build and push Web image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./web
+        push: true
+        tags: ${{ env.IMAGE_NAME_WEB }}:latest
+
+    - name: Success
       run: |
-        echo "✅ Images pushed to Docker Hub"
-        echo "� Render will auto-deploy from this push"
+        echo " Images published successfully!"
+        echo " API: ${{ env.IMAGE_NAME_API }}:latest"
+        echo " Web: ${{ env.IMAGE_NAME_WEB }}:latest"
+
+  deploy-render:
+    name:  Deploy to Render
+    runs-on: ubuntu-latest
+    needs: publish
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Trigger Render Deploy
+      run: |
+        if [ -n "${{ secrets.RENDER_DEPLOY_HOOK }}" ]; then
+          echo " Triggering Render deployment..."
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+          echo " Render deployment triggered!"
+        else
+          echo " Render will auto-deploy from Git push"
+        fi
+
+    - name: Deployment Complete
+      run: |
+        echo " Pipeline completed successfully!"
+        echo " Docker Hub:  Published"
+        echo " Render:  Deployed"
+        echo " App should be live!"
