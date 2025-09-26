@@ -1,5 +1,8 @@
 import os
 import time
+import random
+import json
+import redis
 from typing import Dict, Any, List
 
 from django.utils.decorators import method_decorator
@@ -125,3 +128,107 @@ class TodoDetail(APIView):
         pipe.execute()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class DataView(APIView):
+    """Endpoint simple para cargar y mostrar datos con caché"""
+    
+    def get(self, request):
+        """Obtiene datos de tareas reales, usando caché si está disponible"""
+        try:
+            r = get_redis()
+            cache_key = "todos_data_cache"
+            
+            # Intentar obtener datos del caché
+            cached_data = r.get(cache_key)
+            
+            if cached_data:
+                # Datos encontrados en caché
+                data = json.loads(cached_data)
+                data['from_cache'] = True
+                data['load_time'] = 0  # Instantáneo desde caché
+                return Response(data)
+            
+            # Cargar datos reales (sin caché) - simular procesamiento lento
+            start_time = time.time()
+            
+            # Simular una consulta lenta a la base de datos
+            time.sleep(0.8)  # 800ms de "procesamiento"
+            
+            # Obtener todas las tareas reales desde Redis
+            todo_ids = r.zrange("todo:ids", 0, -1, withscores=True)
+            todos = []
+            
+            for todo_id_bytes, timestamp in todo_ids:
+                todo_id = int(todo_id_bytes)
+                key = f"todo:{todo_id}"
+                todo_data = r.hgetall(key)
+                if todo_data:
+                    created_at_str = todo_data.get('created_at', '0')
+                    try:
+                        created_at = int(float(created_at_str))
+                    except (ValueError, TypeError):
+                        created_at = 0
+                    
+                    done_value = todo_data.get('done', 'false').lower()
+                    is_done = done_value in ['true', '1']
+                    
+                    todos.append({
+                        'id': todo_id,
+                        'title': todo_data.get('title', ''),
+                        'done': is_done,
+                        'created_at': created_at,
+                        'timestamp': timestamp
+                    })
+            
+            # Debug: imprimir algunas tareas para verificar
+            print(f"DEBUG: Total todos: {len(todos)}")
+            for todo in todos[:2]:  # Solo las primeras 2
+                print(f"DEBUG: Todo {todo['id']}: done={todo['done']}, title={todo['title']}")
+            
+            # Crear estadísticas de las tareas
+            total_todos = len(todos)
+            completed_todos = len([t for t in todos if t['done']])
+            pending_todos = total_todos - completed_todos
+            print(f"DEBUG: completed_todos={completed_todos}, pending_todos={pending_todos}")
+            
+            # Preparar respuesta con datos reales
+            todos_data = {
+                'todos': todos,
+                'stats': {
+                    'total': total_todos,
+                    'completed': completed_todos,
+                    'pending': pending_todos,
+                    'completion_rate': round((completed_todos / total_todos * 100) if total_todos > 0 else 0, 1)
+                },
+                'generated_at': time.strftime('%Y-%m-%d %H:%M:%S'),
+                'from_cache': False
+            }
+            
+            end_time = time.time()
+            load_time = round((end_time - start_time) * 1000)  # En milisegundos
+            todos_data['load_time'] = load_time
+            
+            # Guardar en caché por 30 segundos (menos tiempo para ver mejor el efecto)
+            r.setex(cache_key, 30, json.dumps(todos_data))
+            
+            return Response(todos_data)
+            
+        except Exception as e:
+            return Response(
+                {"detail": f"Error: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def delete(self, request):
+        """Limpiar caché de datos de tareas"""
+        try:
+            r = get_redis()
+            r.delete("todos_data_cache")
+            return Response({"detail": "Caché de tareas limpiado"})
+        except Exception as e:
+            return Response(
+                {"detail": f"Error: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
