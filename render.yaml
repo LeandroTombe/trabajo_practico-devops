@@ -8,7 +8,10 @@ services:
     plan: free
     envVars:
       - key: REDIS_URL
-        value: "redis://default:j6mjPhLtKAQPEIy8uHcNaysiY9w7Oza2@red-d3d0bgvdiees738b1de0.oregon-postgres.render.com:6379"
+        fromService:
+          type: redis
+          name: tp-redis-cache
+          property: connectionString
       - key: DATABASE_URL
         fromDatabase:
           name: tp-redis-db
@@ -30,11 +33,15 @@ services:
     dockerArgs:
       VITE_API_URL: "https://tp-redis-api.onrender.com"
 
-  # Cache Redis para el deploy
+  # Cache Redis para el deploy - Solo memoria sin persistencia
   - type: redis
     name: tp-redis-cache
     plan: free
     ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+    config:
+      save: ""  # Deshabilitar RDB snapshots
+      appendonly: "no"  # Deshabilitar AOF persistencia
 
 databases:
   - name: tp-redis-db
