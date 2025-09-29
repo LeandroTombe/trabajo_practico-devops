@@ -1,12 +1,12 @@
 # 📝 Todo App con Arquitectura Moderna - Trabajo Práctico DevOps
 
-Una aplicación web completa de gestión de tareas (Todo List) con **arquitectura profesional** que combina **PostgreSQL** como base de datos principal y **Redis** como sistema de caché. Construida con **Django REST Framework**, **React TypeScript** y desplegada usando **Docker Compose**. Este proyecto demuestra las mejores prácticas de DevOps y desarrollo full-stack.
+Una aplicación web completa de gestión de tareas (Todo List) con **arquitectura profesional** que combina **PostgreSQL** como base de datos principal y **Redis** como sistema de caché. Construida con **Django REST Framework**, **React TypeScript** y desplegada usando **Docker Compose**
 
 ## 🏗️ Arquitectura del Sistema (Actualizada)
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Django API    │    │     Redis       │    │   PostgreSQL    │
+│   Frontend      │    │   Django API    │    │     Redis       │    │   SqlLite    │
 │   (React TS)    │◄──►│   (Cache Layer) │◄──►│    (Cache)      │    │  (Database)     │
 │   Puerto: 8081  │    │   Puerto: 8000  │    │   Puerto: 6379  │    │   Puerto: 5432  │
 │   Nginx Server  │    │   REST + ORM    │    │   Session Store │    │   Persistence   │
@@ -19,7 +19,7 @@ Una aplicación web completa de gestión de tareas (Todo List) con **arquitectur
 - **⚡ Backend**: Django REST Framework con ORM y sistema de caché inteligente
 - **💾 Base de Datos**: PostgreSQL 15 para persistencia confiable y transacciones ACID
 
-### 🌍 Configuración Dual (Desarrollo vs Producción):
+### 🌍 Configuración Dual
 
 #### **Desarrollo Local** (Docker Compose):
 - **Frontend**: Nginx proxy → `http://api:8000` (contenedor local)
@@ -28,14 +28,7 @@ Una aplicación web completa de gestión de tareas (Todo List) con **arquitectur
 #### **Producción** (Render):
 - **Frontend**: Nginx proxy → `https://tp-redis-api.onrender.com`
 - **Variables**: `API_URL=https://tp-redis-api.onrender.com`
-- **🚀 Cache**: Redis 7 para optimización de performance y gestión de sesiones
-- **🐳 Orquestación**: Docker Compose con volúmenes persistentes y networking
 
-### 🎯 Flujo de Datos:
-
-1. **Escritura**: Django → PostgreSQL → Invalidar Cache Redis
-2. **Lectura**: Django → Redis (si existe) → PostgreSQL (si cache miss) → Cache en Redis
-3. **Sesiones**: Django → Redis (almacenamiento de sesiones)
 
 ### Prerrequisitos
 
@@ -51,19 +44,7 @@ Asegúrate de tener instalado:
    cd tp-redis-devops
    ```
 
-2. **Configura el entorno**
-   ```bash
-   # El proyecto usa un solo archivo .env que puedes editar para cambiar entre:
-   # - DESARROLLO: Build local de imágenes Docker
-   # - PRODUCCIÓN: Uso de imágenes publicadas en Docker Hub
-   
-   # Configuraciones incluidas:
-   # - Base de datos PostgreSQL con persistencia
-   # - Cache Redis con configuración optimizada
-   # - Variables de conexión y puertos
-   
-   # Ver instrucciones rápidas: SWITCH-MODE.md
-   ```
+
 
 3. **Inicia el proyecto**
    ```bash
@@ -75,23 +56,12 @@ Asegúrate de tener instalado:
    ```
 
 4. **Accede a la aplicación**
-   - **Frontend**: http://localhost:8081 (desarrollo) / http://localhost:80 (producción)
+   - **Frontend**: http://localhost:8081 (desarrollo
    - **API**: http://localhost:8000
    - **Base de datos**: PostgreSQL puerto 5432
    - **Cache**: Redis puerto 6379
    - **Health Check**: http://localhost:8000/api/health/ (verificar conexiones)
 
-## 🛠️ Comandos Simplificados
-
-### Script de Gestión (Recomendado)
-```bash
-./scripts/manage.sh start    # Iniciar con configuración actual
-./scripts/manage.sh stop     # Detener servicios
-./scripts/manage.sh logs     # Ver logs
-./scripts/manage.sh build    # Construir imágenes locales
-./scripts/manage.sh clean    # Limpiar contenedores
-./scripts/manage.sh switch   # Ver instrucciones de cambio de modo
-```
 
 ### Docker Compose Directo
 ```bash
@@ -179,7 +149,6 @@ El proyecto incluye un pipeline automatizado de CI/CD con GitHub Actions:
 - **Tests**: Validación de código y dependencias
 - **Deploy**: Publicación automática a Docker Hub
 
-📖 **Ver guía completa**: [README-CI-CD.md](README-CI-CD.md)
 
 ## 🧪 API Endpoints
 
@@ -196,7 +165,7 @@ DELETE /api/todos/{id}/     # Eliminar tarea (invalida cache)
 
 ### Sistema y Monitoreo
 ```http
-GET    /api/health/         # Health check de PostgreSQL y Redis
+GET    /api/health/         # Health check de Sqllite y Redis
 ```
 
 ### Ejemplo de respuesta:
@@ -284,10 +253,6 @@ docker-compose ps
 curl http://localhost:8000/api/health/
 ```
 
-### Producción (Docker Hub)
-```bash
-# Con imágenes publicadas
-docker-compose --env-file .env.prod up -d
 
 # Verificar despliegue
 curl http://localhost:8000/api/health/
@@ -319,7 +284,6 @@ docker exec -it tp-redis-devops-cache-1 redis-cli KEYS "*"
 docker inspect --format='{{json .State.Health}}' <container_name>
 ```
 
-## 🐛 Troubleshooting
 
 ### Problemas Comunes
 
@@ -387,25 +351,7 @@ docker inspect --format='{{json .State.Health}}' <container_name>
 - [Docker Compose](https://docs.docker.com/compose/)
 
 
-**Ventajas del sistema**:
-- Datos persistentes con PostgreSQL
-- Cache inteligente con invalidación automática
-- Health checks para monitoreo
-- Volúmenes Docker para persistencia
-- Configuración unificada con .env
-- Pipeline CI/CD automatizado
 
-## 👥 Contribuciones
-
-Las contribuciones son bienvenidas. Por favor:
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## 🔬 Ejemplos Prácticos de Uso
 
 ### Verificar que todo funciona correctamente
 
@@ -465,5 +411,3 @@ docker exec -it tp-redis-devops-cache-1 redis-cli INFO memory
 # Ver estadísticas de PostgreSQL
 docker exec -it tp-redis-devops-database-1 psql -U admin -d todos_db -c "SELECT * FROM pg_stat_activity;"
 ```
-
-**¿Preguntas?** Abre un [issue](https://github.com/MirandaAriano/tp-redis-devops/issues) o revisa la documentación adicional en los archivos README específicos.

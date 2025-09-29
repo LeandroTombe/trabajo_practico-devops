@@ -4,9 +4,11 @@ import random
 import json
 import redis
 from typing import Dict, Any, List
+from datetime import timedelta
 
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -14,6 +16,7 @@ from rest_framework import status
 
 from redis import Redis
 from urllib.parse import urlparse
+from .models import Todo
 
 
 def get_redis() -> Redis:
@@ -40,21 +43,10 @@ def get_redis() -> Redis:
         print(f"REDIS_URL: {redis_url}")
         raise
 
-# Convención de claves:
-#   todo:next_id   -> INCR para nuevo ID
-#   todo:ids       -> ZSET (score=timestamp) con IDs
-#   todo:{id}      -> HASH con fields: title, done ("0"/"1"), created_at (epoch)
-
-def serialize_todo(r: Redis, todo_id: int) -> Dict[str, Any]:
-    data = r.hgetall(f"todo:{todo_id}")
-    if not data:
-        return {}
-    return {
-        "id": todo_id,
-        "title": data.get("title", ""),
-        "done": data.get("done", "0") == "1",
-        "created_at": float(data.get("created_at", "0.0")),
-    }
+# ARQUITECTURA ACTUALIZADA:
+# - TODOs ahora se almacenan en PostgreSQL (modelo Django)
+# - Redis se usa SOLO para caché temporal de consultas
+# - Esto es más escalable y sigue mejores prácticas
 
 @method_decorator(csrf_exempt, name="dispatch")
 class HealthView(APIView):
@@ -68,76 +60,128 @@ class HealthView(APIView):
 
 @method_decorator(csrf_exempt, name="dispatch")
 class TodoList(APIView):
+    """Lista y crea TODOs usando PostgreSQL como almacén principal"""
+    
     def get(self, request):
-        r = get_redis()
-        ids = r.zrange("todo:ids", 0, -1)  # asc por timestamp
-        todos: List[Dict[str, Any]] = []
-        for sid in ids:
-            t = serialize_todo(r, int(sid))
-            if t:
-                todos.append(t)
-        return Response(todos, status=status.HTTP_200_OK)
+        """Obtener todas las tareas desde PostgreSQL"""
+        try:
+            todos = Todo.objects.all()
+            todos_data = [todo.to_dict() for todo in todos]
+            return Response(todos_data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"detail": f"Error obteniendo tareas: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def post(self, request):
-        r = get_redis()
-        title = (request.data or {}).get("title")
-        if not title or not isinstance(title, str):
-            return Response({"detail": "title (string) es requerido."}, status=status.HTTP_400_BAD_REQUEST)
+        """Crear nueva tarea en PostgreSQL"""
+        try:
+            title = (request.data or {}).get("title")
+            if not title or not isinstance(title, str):
+                return Response(
+                    {"detail": "title (string) es requerido."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        new_id = r.incr("todo:next_id")
-        now = time.time()
-        pipe = r.pipeline()
-        pipe.hset(f"todo:{new_id}", mapping={
-            "title": title.strip(),
-            "done": "0",
-            "created_at": str(now),
-        })
-        pipe.zadd("todo:ids", {new_id: now})
-        pipe.execute()
-
-        return Response(serialize_todo(r, new_id), status=status.HTTP_201_CREATED)
+            # Crear tarea en PostgreSQL
+            todo = Todo.objects.create(title=title.strip())
+            
+            # Invalidar caché de datos (si existe)
+            try:
+                r = get_redis()
+                r.delete("todos_data_cache")
+            except:
+                pass  # Si Redis falla, no importa para el funcionamiento principal
+                
+            return Response(todo.to_dict(), status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response(
+                {"detail": f"Error creando tarea: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 @method_decorator(csrf_exempt, name="dispatch")
 class TodoDetail(APIView):
+    """Actualiza y elimina TODOs específicos usando PostgreSQL"""
+    
     def patch(self, request, todo_id: int):
-        r = get_redis()
-        key = f"todo:{todo_id}"
-        if not r.exists(key):
+        """Actualizar tarea específica en PostgreSQL"""
+        try:
+            todo = Todo.objects.get(id=todo_id)
+        except Todo.DoesNotExist:
             return Response({"detail": "No existe."}, status=status.HTTP_404_NOT_FOUND)
 
-        payload = request.data or {}
-        updates = {}
+        try:
+            payload = request.data or {}
+            updated = False
 
-        if "title" in payload:
-            title = payload.get("title")
-            if not isinstance(title, str):
-                return Response({"detail": "title debe ser string."}, status=status.HTTP_400_BAD_REQUEST)
-            updates["title"] = title.strip()
+            if "title" in payload:
+                title = payload.get("title")
+                if not isinstance(title, str):
+                    return Response(
+                        {"detail": "title debe ser string."}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                todo.title = title.strip()
+                updated = True
 
-        if "done" in payload:
-            done = payload.get("done")
-            if not isinstance(done, bool):
-                return Response({"detail": "done debe ser booleano."}, status=status.HTTP_400_BAD_REQUEST)
-            updates["done"] = "1" if done else "0"
+            if "done" in payload:
+                done = payload.get("done")
+                if not isinstance(done, bool):
+                    return Response(
+                        {"detail": "done debe ser booleano."}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                todo.done = done
+                updated = True
 
-        if not updates:
-            return Response({"detail": "Nada para actualizar."}, status=status.HTTP_400_BAD_REQUEST)
+            if not updated:
+                return Response(
+                    {"detail": "Nada para actualizar."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        r.hset(key, mapping=updates)
-        return Response(serialize_todo(r, todo_id), status=status.HTTP_200_OK)
+            todo.save()
+            
+            # Invalidar caché
+            try:
+                r = get_redis()
+                r.delete("todos_data_cache")
+            except:
+                pass
+                
+            return Response(todo.to_dict(), status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response(
+                {"detail": f"Error actualizando tarea: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def delete(self, request, todo_id: int):
-        r = get_redis()
-        key = f"todo:{todo_id}"
-        if not r.exists(key):
+        """Eliminar tarea específica de PostgreSQL"""
+        try:
+            todo = Todo.objects.get(id=todo_id)
+            todo.delete()
+            
+            # Invalidar caché
+            try:
+                r = get_redis()
+                r.delete("todos_data_cache")
+            except:
+                pass
+                
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        except Todo.DoesNotExist:
             return Response({"detail": "No existe."}, status=status.HTTP_404_NOT_FOUND)
-
-        pipe = r.pipeline()
-        pipe.delete(key)
-        pipe.zrem("todo:ids", todo_id)
-        pipe.execute()
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response(
+                {"detail": f"Error eliminando tarea: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -160,49 +204,115 @@ class DataView(APIView):
                 data['load_time'] = 0  # Instantáneo desde caché
                 return Response(data)
             
-            # Cargar datos reales (sin caché) - tiempo real de consulta
+            # Cargar datos desde PostgreSQL con operaciones SÚPER COSTOSAS
             start_time = time.time()
             
-            # Obtener todas las tareas reales desde Redis
-            todo_ids = r.zrange("todo:ids", 0, -1, withscores=True)
+            # 1. Múltiples consultas de agregación PESADAS
+            total_todos = Todo.objects.count()
+            completed_todos = Todo.objects.filter(done=True).count()
+            pending_todos = Todo.objects.filter(done=False).count()
+            
+            # 2. Consultas con filtros complejos y rangos de fechas
+            today = timezone.now().date()
+            week_ago = timezone.now() - timedelta(days=7)
+            month_ago = timezone.now() - timedelta(days=30)
+            year_ago = timezone.now() - timedelta(days=365)
+            
+            # 3. CONSULTAS SÚPER PESADAS (simula reportes complejos reales)
+            today_todos = Todo.objects.filter(created_at__date=today).count()
+            week_todos = Todo.objects.filter(created_at__gte=week_ago).count()
+            month_todos = Todo.objects.filter(created_at__gte=month_ago).count()
+            year_todos = Todo.objects.filter(created_at__gte=year_ago).count()
+            recent_completed = Todo.objects.filter(done=True, updated_at__gte=week_ago).count()
+            
+            # 4. Agregaciones por día (MUY COSTOSO)
+            daily_stats = {}
+            for days_back in range(7):  # Últimos 7 días
+                date = today - timedelta(days=days_back)
+                daily_count = Todo.objects.filter(created_at__date=date).count()
+                daily_completed = Todo.objects.filter(created_at__date=date, done=True).count()
+                daily_stats[str(date)] = {
+                    'created': daily_count,
+                    'completed': daily_completed
+                }
+            
+            # 5. Consultas con LIKE patterns (SÚPER LENTO)
+            urgent_todos = Todo.objects.filter(title__icontains='urgent').count()
+            important_todos = Todo.objects.filter(title__icontains='important').count()
+            critical_todos = Todo.objects.filter(title__icontains='critical').count()
+            
+            # 6. Consulta principal con ordenamiento COSTOSO
+            todos_queryset = Todo.objects.all().order_by('-created_at', 'title')
+            
+            # 7. Procesamiento individual PESADO (simula lógica de negocio compleja)
             todos = []
+            word_count_total = 0
+            avg_title_length = 0
             
-            for todo_id_bytes, timestamp in todo_ids:
-                todo_id = int(todo_id_bytes)
-                key = f"todo:{todo_id}"
-                todo_data = r.hgetall(key)
-                if todo_data:
-                    created_at_str = todo_data.get('created_at', '0')
-                    try:
-                        created_at = int(float(created_at_str))
-                    except (ValueError, TypeError):
-                        created_at = 0
-                    
-                    done_value = todo_data.get('done', 'false').lower()
-                    is_done = done_value in ['true', '1']
-                    
-                    todos.append({
-                        'id': todo_id,
-                        'title': todo_data.get('title', ''),
-                        'done': is_done,
-                        'created_at': created_at,
-                        'timestamp': timestamp
-                    })
+            for todo in todos_queryset:
+                # Verificaciones individuales costosas
+                is_recent = (timezone.now() - todo.created_at).days < 7
+                is_very_recent = (timezone.now() - todo.created_at).hours < 24
+                title_words = len(todo.title.split())
+                title_length = len(todo.title)
+                word_count_total += title_words
+                
+                # Más cálculos innecesarios para simular carga
+                has_numbers = any(char.isdigit() for char in todo.title)
+                has_special = any(char in "!@#$%^&*()" for char in todo.title)
+                
+                todos.append({
+                    'id': todo.id,
+                    'title': todo.title,
+                    'done': todo.done,
+                    'created_at': todo.created_at.timestamp(),
+                    'timestamp': todo.created_at.timestamp(),
+                    'is_recent': is_recent,
+                    'is_very_recent': is_very_recent,
+                    'title_words': title_words,
+                    'title_length': title_length,
+                    'has_numbers': has_numbers,
+                    'has_special_chars': has_special
+                })
             
-            # Crear estadísticas de las tareas
-            total_todos = len(todos)
-            completed_todos = len([t for t in todos if t['done']])
-            pending_todos = total_todos - completed_todos
+            # 8. Más cálculos estadísticos COSTOSOS
+            if total_todos > 0:
+                avg_title_length = word_count_total / total_todos
+                completion_rate = (completed_todos / total_todos) * 100
+                recent_completion_rate = (recent_completed / week_todos * 100) if week_todos > 0 else 0
+            else:
+                completion_rate = 0
+                recent_completion_rate = 0
             
-            # Preparar respuesta con datos reales
+            # 9. Estadísticas adicionales PESADAS
+            title_stats = {
+                'avg_words': round(avg_title_length, 2),
+                'total_characters': sum(len(t['title']) for t in todos),
+                'avg_length': round(sum(len(t['title']) for t in todos) / len(todos), 2) if todos else 0,
+                'with_numbers': sum(1 for t in todos if t['has_numbers']),
+                'with_special': sum(1 for t in todos if t['has_special_chars'])
+            }
+            
+            # Preparar respuesta con estadísticas SÚPER EXTENDIDAS
             todos_data = {
                 'todos': todos,
                 'stats': {
                     'total': total_todos,
                     'completed': completed_todos,
                     'pending': pending_todos,
-                    'completion_rate': round((completed_todos / total_todos * 100) if total_todos > 0 else 0, 1)
+                    'completion_rate': round(completion_rate, 1),
+                    'recent_completion_rate': round(recent_completion_rate, 1),
+                    'today_created': today_todos,
+                    'week_created': week_todos,
+                    'month_created': month_todos,
+                    'year_created': year_todos,
+                    'recent_completed': recent_completed,
+                    'urgent_count': urgent_todos,
+                    'important_count': important_todos,
+                    'critical_count': critical_todos
                 },
+                'daily_stats': daily_stats,
+                'title_analytics': title_stats,
                 'generated_at': time.strftime('%Y-%m-%d %H:%M:%S'),
                 'from_cache': False
             }
@@ -211,8 +321,16 @@ class DataView(APIView):
             load_time = round((end_time - start_time) * 1000)  # En milisegundos
             todos_data['load_time'] = load_time
             
-            # Guardar en caché por 30 segundos (menos tiempo para ver mejor el efecto)
-            r.setex(cache_key, 30, json.dumps(todos_data))
+            # Guardar en caché por 30 segundos (Redis solo como caché)
+            try:
+                # Convertir timestamps a strings para JSON
+                todos_data_for_cache = todos_data.copy()
+                for todo in todos_data_for_cache['todos']:
+                    todo['created_at'] = str(todo['created_at'])
+                    todo['timestamp'] = str(todo['timestamp'])
+                r.setex(cache_key, 30, json.dumps(todos_data_for_cache))
+            except:
+                pass  # Si Redis falla, no importa para el funcionamiento principal
             
             return Response(todos_data)
             

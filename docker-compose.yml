@@ -58,8 +58,8 @@ services:
       context: ./web
       dockerfile: Dockerfile
       args:
-        # Para desarrollo local, apunta al contenedor API
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api}
+        # Para desarrollo local, usa proxy nginx
+        VITE_API_URL: ${VITE_API_URL:-}
     container_name: ${PROJECT_NAME:-tp-redis-devops}_web
     depends_on:
       - api

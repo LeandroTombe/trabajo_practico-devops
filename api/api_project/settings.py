@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",    # ← middleware abajo
     "django.contrib.staticfiles",
     "rest_framework",
+    "todos",  # ← nuestra app principal
 ]
 
 MIDDLEWARE = [

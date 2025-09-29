@@ -28,3 +28,27 @@ class Product(models.Model):
     
     class Meta:
         ordering = ['name']
+
+
+class Todo(models.Model):
+    """Modelo para tareas/todos - almacenamiento principal en PostgreSQL"""
+    title = models.CharField(max_length=255)
+    done = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Todo #{self.id}: {self.title}"
+    
+    class Meta:
+        ordering = ['-created_at']  # Más recientes primero
+        
+    def to_dict(self):
+        """Serializar a diccionario para JSON response"""
+        return {
+            'id': self.id,
+            'title': self.title,
+            'done': self.done,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
+        }
