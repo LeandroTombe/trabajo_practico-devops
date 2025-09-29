@@ -122,6 +122,9 @@ export default function App() {
       await api.clearCache();
       setData(null);
       setErr(null);
+      // Recargar datos inmediatamente después de limpiar caché
+      // Esto forzará una carga fresca desde la base de datos
+      await loadData();
     } catch (e: any) {
       setErr(e.message);
     }
