@@ -324,15 +324,7 @@ docker inspect --format='{{json .State.Health}}' <container_name>
    # Ver estado de migraciones
    docker exec -it tp-redis-devops-api-1 python manage.py showmigrations
    ```
-
-5. **Reconstruir desde cero**
-   ```bash
-   ./scripts/manage.sh clean
-   docker-compose down -v  # Elimina también los volúmenes
-   docker-compose up --build -d
-   ```
-
-6. **Verificar volúmenes de datos**
+5. **Verificar volúmenes de datos**
    ```bash
    # Listar volúmenes
    docker volume ls | grep tp-redis-devops
