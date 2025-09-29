@@ -233,3 +233,116 @@ class DataView(APIView):
                 {"detail": f"Error: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class RedisAdminView(APIView):
+    """Endpoint de administración para ver y gestionar Redis"""
+    
+    def get(self, request):
+        """Ver información completa de Redis"""
+        try:
+            r = get_redis()
+            
+            # Obtener todas las keys
+            all_keys = r.keys("*")
+            
+            # Información general
+            info = {
+                "redis_info": {
+                    "total_keys": len(all_keys),
+                    "memory_usage": r.info().get('used_memory_human', 'N/A'),
+                    "connected_clients": r.info().get('connected_clients', 'N/A'),
+                    "uptime": r.info().get('uptime_in_seconds', 'N/A'),
+                },
+                "keys_details": []
+            }
+            
+            # Detalles de cada key
+            for key in all_keys:
+                try:
+                    key_type = r.type(key)
+                    ttl = r.ttl(key)
+                    
+                    key_info = {
+                        "key": key,
+                        "type": key_type,
+                        "ttl": ttl if ttl > 0 else "No expira"
+                    }
+                    
+                    # Obtener valor según el tipo
+                    if key_type == "string":
+                        try:
+                            # Intentar decodificar como JSON
+                            value = r.get(key)
+                            try:
+                                key_info["value"] = json.loads(value)
+                                key_info["display"] = "JSON"
+                            except:
+                                key_info["value"] = value
+                                key_info["display"] = "String"
+                        except:
+                            key_info["value"] = "Error leyendo valor"
+                            
+                    elif key_type == "hash":
+                        key_info["value"] = r.hgetall(key)
+                        key_info["display"] = "Hash"
+                        
+                    elif key_type == "zset":
+                        # Para sorted sets, mostrar elementos con scores
+                        zset_data = r.zrange(key, 0, -1, withscores=True)
+                        key_info["value"] = [{"member": member, "score": score} for member, score in zset_data]
+                        key_info["display"] = "Sorted Set"
+                        
+                    elif key_type == "list":
+                        key_info["value"] = r.lrange(key, 0, -1)
+                        key_info["display"] = "List"
+                        
+                    elif key_type == "set":
+                        key_info["value"] = list(r.smembers(key))
+                        key_info["display"] = "Set"
+                    
+                    info["keys_details"].append(key_info)
+                    
+                except Exception as e:
+                    info["keys_details"].append({
+                        "key": key,
+                        "error": f"Error leyendo key: {str(e)}"
+                    })
+            
+            return Response(info)
+            
+        except Exception as e:
+            return Response(
+                {"detail": f"Error conectando a Redis: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def delete(self, request):
+        """Limpiar keys específicas o todas"""
+        try:
+            r = get_redis()
+            key_pattern = request.GET.get('pattern', '*')
+            
+            if key_pattern == "FLUSH_ALL":
+                # Limpiar toda la base de datos
+                r.flushdb()
+                return Response({"detail": "Toda la base de datos Redis ha sido limpiada"})
+            else:
+                # Limpiar keys específicas
+                keys_to_delete = r.keys(key_pattern)
+                if keys_to_delete:
+                    deleted_count = r.delete(*keys_to_delete)
+                    return Response({
+                        "detail": f"Eliminadas {deleted_count} keys con patrón '{key_pattern}'"
+                    })
+                else:
+                    return Response({
+                        "detail": f"No se encontraron keys con patrón '{key_pattern}'"
+                    })
+                    
+        except Exception as e:
+            return Response(
+                {"detail": f"Error: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
