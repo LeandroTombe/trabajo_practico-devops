@@ -14,6 +14,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Hacer el script ejecutable
+RUN chmod +x start.sh
+
 EXPOSE 8000
 
-CMD ["gunicorn", "api_project.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2"]
+CMD ["./start.sh"]
