@@ -18,17 +18,27 @@ from urllib.parse import urlparse
 
 def get_redis() -> Redis:
     redis_url = os.environ.get("REDIS_URL")
-    if redis_url:
-        # Para Render/producción - usa REDIS_URL
-        return Redis.from_url(redis_url, decode_responses=True)
-    else:
-        # Para desarrollo local
-        return Redis(
-            host=os.environ.get("REDIS_HOST", "localhost"),
-            port=int(os.environ.get("REDIS_PORT", "6379")),
-            db=int(os.environ.get("REDIS_DB", "0")),
-            decode_responses=True,
-        )
+    try:
+        if redis_url:
+            # Para Render/producción - usa REDIS_URL
+            r = Redis.from_url(redis_url, decode_responses=True)
+            # Test conexión
+            r.ping()
+            return r
+        else:
+            # Para desarrollo local
+            r = Redis(
+                host=os.environ.get("REDIS_HOST", "localhost"),
+                port=int(os.environ.get("REDIS_PORT", "6379")),
+                db=int(os.environ.get("REDIS_DB", "0")),
+                decode_responses=True,
+            )
+            r.ping()
+            return r
+    except Exception as e:
+        print(f"Redis connection error: {e}")
+        print(f"REDIS_URL: {redis_url}")
+        raise
 
 # Convención de claves:
 #   todo:next_id   -> INCR para nuevo ID
