@@ -8,10 +8,7 @@ services:
     plan: free
     envVars:
       - key: REDIS_URL
-        fromService:
-          type: redis
-          name: tp-redis-cache
-          property: connectionString
+        value: "redis://red-d3b8v0ffte5s739ieveg:6379"
       - key: DATABASE_URL
         fromDatabase:
           name: tp-redis-db
@@ -33,11 +30,7 @@ services:
     dockerArgs:
       VITE_API_URL: "https://tp-redis-api.onrender.com"
 
-  # Cache Redis  
-  - type: redis
-    name: tp-redis-cache
-    plan: free
-    ipAllowList: []
+  # Redis existente se usa con URL directa (no se declara aquí)
 
 databases:
   - name: tp-redis-db
