@@ -33,7 +33,7 @@ services:
     dockerArgs:
       VITE_API_URL: "https://tp-redis-api.onrender.com"
 
-  # Cache Redis  
+  # Cache Redis para el deploy
   - type: redis
     name: tp-redis-cache
     plan: free
