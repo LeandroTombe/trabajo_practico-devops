@@ -29,6 +29,9 @@ services:
     plan: free
     dockerArgs:
       VITE_API_URL: "https://tp-redis-api.onrender.com"
+    envVars:
+      - key: RENDER_ENV
+        value: "true"
 
 
 
