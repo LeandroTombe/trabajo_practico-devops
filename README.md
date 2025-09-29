@@ -6,7 +6,7 @@ Una aplicación web completa de gestión de tareas (Todo List) con **arquitectur
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Django API    │    │     Redis       │    │   SqlLite    │
+│   Frontend      │    │   Django API    │    │     Redis       │    │   Postgresql    │
 │   (React TS)    │◄──►│   (Cache Layer) │◄──►│    (Cache)      │    │  (Database)     │
 │   Puerto: 8081  │    │   Puerto: 8000  │    │   Puerto: 6379  │    │   Puerto: 5432  │
 │   Nginx Server  │    │   REST + ORM    │    │   Session Store │    │   Persistence   │
@@ -48,10 +48,8 @@ Asegúrate de tener instalado:
 
 3. **Inicia el proyecto**
    ```bash
-   # Usando el script de gestión (recomendado)
-   ./scripts/manage.sh start
-   
-   # O directamente con Docker Compose
+
+   # con Docker Compose
    docker-compose up -d
    ```
 
