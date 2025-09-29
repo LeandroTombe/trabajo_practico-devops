@@ -36,12 +36,12 @@ console.log('🔧 Frontend Config:', {
 
 const api = {
   async list(): Promise<Todo[]> {
-    const res = await fetch(`${API_BASE_URL}/todos`);
+    const res = await fetch(`${API_BASE_URL}/todos/`);
     if (!res.ok) throw new Error("Error listando tareas");
     return res.json();
   },
   async add(title: string): Promise<Todo> {
-    const res = await fetch(`${API_BASE_URL}/todos`, {
+    const res = await fetch(`${API_BASE_URL}/todos/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
@@ -50,7 +50,7 @@ const api = {
     return res.json();
   },
   async toggle(id: number, done: boolean): Promise<Todo> {
-    const res = await fetch(`${API_BASE_URL}/todos/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/todos/${id}/`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ done }),
@@ -59,14 +59,14 @@ const api = {
     return res.json();
   },
   async remove(id: number): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}/todos/${id}`, { method: "DELETE" });
+    const res = await fetch(`${API_BASE_URL}/todos/${id}/`, { method: "DELETE" });
     if (!res.ok) throw new Error("Error eliminando tarea");
   },
   
   // Nuevas funciones para datos
   async getData(): Promise<DataItem> {
     const start = performance.now();
-    const res = await fetch(`${API_BASE_URL}/data`);
+    const res = await fetch(`${API_BASE_URL}/data/`);
     if (!res.ok) throw new Error("Error obteniendo datos");
     const data = await res.json();
     const clientTime = Math.round(performance.now() - start);
@@ -74,7 +74,7 @@ const api = {
   },
   
   async clearCache(): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}/data`, { method: "DELETE" });
+    const res = await fetch(`${API_BASE_URL}/data/`, { method: "DELETE" });
     if (!res.ok) throw new Error("Error limpiando caché");
   }
 };
@@ -136,7 +136,7 @@ export default function App() {
     if (!text.trim()) return;
     try {
       const created = await api.add(text.trim());
-      setTodos((t) => [...t, created]);
+      setTodos((t: Todo[]) => [...t, created]);
       setText("");
     } catch (e: any) {
       setErr(e.message);
@@ -146,7 +146,7 @@ export default function App() {
   const onToggle = async (todo: Todo) => {
     try {
       const updated = await api.toggle(todo.id, !todo.done);
-      setTodos((t) => t.map((x) => (x.id === todo.id ? updated : x)));
+      setTodos((t: Todo[]) => t.map((x: Todo) => (x.id === todo.id ? updated : x)));
     } catch (e: any) {
       setErr(e.message);
     }
@@ -155,7 +155,7 @@ export default function App() {
   const onDelete = async (todo: Todo) => {
     try {
       await api.remove(todo.id);
-      setTodos((t) => t.filter((x) => x.id !== todo.id));
+      setTodos((t: Todo[]) => t.filter((x: Todo) => x.id !== todo.id));
     } catch (e: any) {
       setErr(e.message);
     }
@@ -210,7 +210,7 @@ export default function App() {
           >
         <input
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setText(e.target.value)}
           placeholder="Nueva tarea..."
           style={{ flex: 1, padding: 8, fontSize: 16 }}
         />
@@ -403,9 +403,7 @@ export default function App() {
           ) : (
             <div style={{ textAlign: "center", color: "#666", padding: 20 }}>
               <p>No hay datos de tareas cargados. Haz clic en "Cargar Datos" para consultar las tareas.</p>
-              <p style={{ fontSize: 12 }}>
-                💡 La primera consulta tomará ~800ms (simulando base de datos), la segunda será instantánea desde el caché Redis.
-              </p>
+             
             </div>
           )}
         </div>
