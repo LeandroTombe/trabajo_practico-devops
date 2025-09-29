@@ -252,7 +252,7 @@ class DataView(APIView):
             for todo in todos_queryset:
                 # Verificaciones individuales costosas
                 is_recent = (timezone.now() - todo.created_at).days < 7
-                is_very_recent = (timezone.now() - todo.created_at).hours < 24
+                is_very_recent = (timezone.now() - todo.created_at).total_seconds() < 24 * 3600
                 title_words = len(todo.title.split())
                 title_length = len(todo.title)
                 word_count_total += title_words
